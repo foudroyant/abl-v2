@@ -5,13 +5,15 @@ import '../components/header.dart';
 import '../components/item_search.dart';
 
 class Recherche_ABP extends StatefulWidget {
-  const Recherche_ABP({Key? key}) : super(key: key);
+  final String input;
+  const Recherche_ABP({Key? key, required this.input}) : super(key: key);
 
   @override
   State<Recherche_ABP> createState() => _Recherche_ABPState();
 }
 
 class _Recherche_ABPState extends State<Recherche_ABP> {
+  String input = "";
 
   Widget _displayZone(String title, double width){
     return Container(
@@ -42,7 +44,7 @@ class _Recherche_ABPState extends State<Recherche_ABP> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => Resultats(),
+                          builder: (context) => Resultats(input: input,),
                         ),
                       );
                     }
@@ -56,6 +58,7 @@ class _Recherche_ABPState extends State<Recherche_ABP> {
   }
   @override
   Widget build(BuildContext context) {
+    print(widget.input);
     double screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       body : SafeArea(

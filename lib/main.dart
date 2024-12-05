@@ -4,30 +4,94 @@ import 'package:ablv2/screens/rdv.dart';
 import 'package:ablv2/screens/recap_rdv.dart';
 import 'package:ablv2/screens/recherche_abp.dart';
 import 'package:ablv2/screens/resultats.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '/components/annonce.dart';
 import '/components/header.dart';
 import '/screens/home.dart';
 import '/utils/colors.dart';
 
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'models/institut.dart';
+import 'models/institut_provider.dart';
+import 'models/utils.dart';
+
+void main() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  List<Institut> instituts = [];
+
+  // Fonction pour récupérer les instituts par catégorie
+  Future<void> getInstitutsByCategory() async {
+
+    // Référence à la collection 'instituts'
+    CollectionReference institutsCollection = FirebaseFirestore.instance.collection('instituts');
+
+    try {
+      // Effectuer la requête pour récupérer les instituts dont la catégorie contient la chaîne de caractères
+      QuerySnapshot snapshot = await institutsCollection
+          //.where('categories', isGreaterThanOrEqualTo: category)
+          //.where('categories', isLessThanOrEqualTo: category + '\\uf8ff')
+          .get();
+
+      // Traitez les résultats
+      setState(() {
+        instituts = snapshot.docs.map((doc) {
+          return Institut(
+            id: doc.id,
+            nom: doc['nom'],
+            localisation: doc['localisation'],
+            ville: doc['ville'],
+            pays: doc['pays'],
+            telephone: doc['telephone'],
+            images: List<String>.from(doc['images']),
+            categories: doc['categories'],
+            adresse: doc['adresse'],
+            tendance: doc['tendance'],
+          );
+        }).toList();
+      });
+    } catch (e) {
+      print("Error retrieving institutes: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ABL',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(
+    getInstitutsByCategory();
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) => Utils(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => Institut_Provider(instituts: instituts),
+        ),
+      ],
+      child: MaterialApp(
         title: 'ABL',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
+          useMaterial3: true,
+        ),
+        home: MyHomePage(
+          title: 'ABL',
+        ),
       ),
     );
   }

@@ -1,9 +1,12 @@
 import 'package:ablv2/screens/recherche_abp.dart';
+import 'package:ablv2/screens/resultats.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../components/tendance.dart';
+import '../models/tendances.dart';
 import '/components/annonce.dart';
 import '/components/annonce_abp.dart';
 import '/components/header.dart';
-import '/components/tendance.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
@@ -16,8 +19,53 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final List _liste = [0, 1, 2, 3, 4, 5];
+  final db = FirebaseFirestore.instance;
+  List<Tendance_Model> tendances = [];
+  List<String> categories = [];
+
+
+
+
+  List<Tendance_Model> getByCategorie(String cat){
+    return tendances.where((t){
+      return t.categorie == cat;
+    }).toList();
+  }
+
+  // Initialisation dans initState()
+  @override
+  void initState() {
+    super.initState();
+    db.collection("tendances").get().then(
+          (querySnapshot) {
+        print("Successfully completed");
+        for (var docSnapshot in querySnapshot.docs) {
+          setState((){
+            tendances.add(Tendance_Model(
+              id: docSnapshot.id,
+              nom : docSnapshot.data()['nom'],
+              image : docSnapshot.data()['image'],
+              categorie : docSnapshot.data()['categorie'],
+              note : docSnapshot.data()['note'],
+            ));
+            categories.add(docSnapshot.data()['categorie']);
+          });
+          //print('${docSnapshot.id} => ${docSnapshot.data()}');
+        }
+      },
+      onError: (e) => print("Error completing: $e"),
+    );
+    setState((){
+      categories.toSet().toList();
+    });
+
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
+
     return Scaffold(
       body: SafeArea(
           child: SingleChildScrollView(
@@ -72,194 +120,73 @@ class _HomeState extends State<Home> {
                   ),
                 ),
 
-                Container(
-                  padding: EdgeInsets.fromLTRB(20, 10, 0, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Coiffure Femme',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 13,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w400,
-                          height: 0,
-                        ),
-                      ),
-                      SizedBox(height : 10),
-                      Container(
-                          width: double.infinity,
-                          height: 120,
-                          child: ListView.builder(
-                            itemCount: _liste.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Recherche_ABP(),
-                                      ),
-                                    );
-                                  },
-                                  child: Tendance(
-                                    image: "assets/images/femme.jpg",
-                                    label: "'Ondulations sur une ligne'",
-                                    note: 4.9,
-                                  ),
+                Column(
+                  children : categories.toSet().toList().map((cat){
+                    return Column(
+                        //crossAxisAlignment : CrossAxisAlignment.center,
+                      children : [
+                        Container(
+                          padding: EdgeInsets.fromLTRB(20, 10, 0, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cat,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 13,
+                                  fontFamily: 'Roboto',
+                                  fontWeight: FontWeight.w400,
+                                  height: 0,
                                 ),
-                              );
-                            },
-                            scrollDirection: Axis.horizontal,
-                          )),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.fromLTRB(20, 10, 0, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Coiffure Mixe',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 13,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w400,
-                          height: 0,
+                              ),
+                              SizedBox(height: 10),
+                              Container(
+                                  width: double.infinity,
+                                  height: 120,
+                                  child: ListView.builder(
+                                    itemCount: getByCategorie(cat).length,
+                                    itemBuilder: (context, index) {
+                                      Tendance_Model item = getByCategorie(cat)[index];
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.symmetric(horizontal: 5),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => Resultats(input: item.nom),
+                                              ),
+                                            );
+                                          },
+                                          child: Tendance(
+                                            image: "assets/images/femme.jpg",
+                                            label: item.nom,
+                                            note: item.note,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    scrollDirection: Axis.horizontal,
+                                  )),
+                            ],
+                          ),
                         ),
-                      ),
-                      SizedBox(height : 10),
-                      Container(
-                          width: double.infinity,
-                          height: 120,
-                          child: ListView.builder(
-                            itemCount: _liste.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Recherche_ABP(),
-                                      ),
-                                    );
-                                  },
-                                  child: Tendance(
-                                    image: "assets/images/femme.jpg",
-                                    label: "'Ondulations sur une ligne'",
-                                    note: 4.9,
-                                  ),
-                                ),
-                              );
-                            },
-                            scrollDirection: Axis.horizontal,
-                          )),
-                    ],
-                  ),
+                            Row(
+                                mainAxisAlignment : MainAxisAlignment.center,
+                              children : [
+                                Container(
+                                  child : ["Arts & Loisirs"].contains(cat) ? Center(child: AnnonceAbp()) : null,
+                                )
+                              ]
+                            )
+              ]
+                    );
+
+                  }).toList()
                 ),
 
-                Center(
-                  child: AnnonceAbp(),
-                ),
-                Container(
-                  padding: EdgeInsets.fromLTRB(20, 10, 0, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Coiffure Femme',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 13,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w400,
-                          height: 0,
-                        ),
-                      ),
-                      SizedBox(height : 10),
-                      Container(
-                          width: double.infinity,
-                          height: 120,
-                          child: ListView.builder(
-                            itemCount: _liste.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Recherche_ABP(),
-                                      ),
-                                    );
-                                  },
-                                  child: Tendance(
-                                    image: "assets/images/femme.jpg",
-                                    label: "'Ondulations sur une ligne'",
-                                    note: 4.9,
-                                  ),
-                                ),
-                              );
-                            },
-                            scrollDirection: Axis.horizontal,
-                          )),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.fromLTRB(20, 10, 0, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Barbe',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 13,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w400,
-                          height: 0,
-                        ),
-                      ),
-                      SizedBox(height : 10),
-                      Container(
-                          width: double.infinity,
-                          height: 120,
-                          child: ListView.builder(
-                            itemCount: _liste.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Recherche_ABP(),
-                                      ),
-                                    );
-                                  },
-                                  child: Tendance(
-                                    image: "assets/images/femme.jpg",
-                                    label: "'Ondulations sur une ligne'",
-                                    note: 4.9,
-                                  ),
-                                ),
-                              );
-                            },
-                            scrollDirection: Axis.horizontal,
-                          )),
-                    ],
-                  ),
-                ),
               ],
             ),
           )), // This trailing comma makes auto-formatting nicer for build methods.

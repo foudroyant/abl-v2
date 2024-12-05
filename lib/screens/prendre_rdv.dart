@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import '../components/indisponible.dart';
 import '../components/photo_institut.dart';
 import '../components/ui_shared.dart';
+import '../models/creneau.dart';
+import '../models/prestation.dart';
+import '../utils/fn_global.dart';
 
 class Prendre_RDV extends StatefulWidget {
-  const Prendre_RDV({Key? key}) : super(key: key);
+  final Prestation service;
+  const Prendre_RDV({Key? key, required this.service}) : super(key: key);
 
   @override
   State<Prendre_RDV> createState() => _Prendre_RDVState();
@@ -16,6 +20,7 @@ class _Prendre_RDVState extends State<Prendre_RDV> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     final List _liste = [null,1,2,3,4,5,6];
+
 
     return Scaffold(
       appBar: appBar_shared(context, 'AB Beauty Salon', '124 rue de la gare, 75 000 Paris - France'),
@@ -138,8 +143,8 @@ class _Prendre_RDVState extends State<Prendre_RDV> {
               )
             ),
             Column(
-              children : _liste.map((item){
-                return Indisponible();
+              children : getWeekDates(DateTime.now()).map((item){
+                return Indisponible(day: item, service: widget.service, options: [],);
               }).toList()
             )
           ]

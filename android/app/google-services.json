@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "352568696422",
+    "project_id": "abl-dev",
+    "storage_bucket": "abl-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:352568696422:android:2bbffd234f316f7022d7a7",
+        "android_client_info": {
+          "package_name": "com.abl.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqDNV0qAADa21rESaSQE3nLSiYNnAD3wQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

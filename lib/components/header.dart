@@ -1,11 +1,20 @@
-import 'package:ablv2/components/search.dart';
 import 'package:flutter/material.dart';
 import '/utils/colors.dart';
 import '/utils/styles.dart';
+import 'package:ablv2/components/search.dart';
 
-class Header extends StatelessWidget {
-  bool is_home;
+class Header extends StatefulWidget {
+  final bool is_home;
+
   Header({required this.is_home});
+
+  @override
+  _HeaderState createState() => _HeaderState();
+}
+
+class _HeaderState extends State<Header> {
+
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -41,7 +50,7 @@ class Header extends StatelessWidget {
                 const SizedBox(
                   height: 20,
                 ),
-                Search(is_home: is_home)
+                Search(is_home: widget.is_home), // Utilisation de widget.is_home
               ],
             ),
           ),

@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../components/photo_institut.dart';
 import '../components/presentation.dart';
 import '../components/ui_shared.dart';
+import '../models/institut.dart';
 import '../utils/colors.dart';
 import '../utils/styles.dart';
 
 class Profil_Institut extends StatefulWidget {
-  const Profil_Institut({Key? key}) : super(key: key);
+  final Institut institut;
+  const Profil_Institut({Key? key, required this.institut}) : super(key: key);
 
   @override
   State<Profil_Institut> createState() => _Profil_InstitutState();
@@ -30,10 +32,11 @@ class _Profil_InstitutState extends State<Profil_Institut> {
 
   @override
   Widget build(BuildContext context) {
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        appBar: appBar_shared(context, 'AB Beauty Salon', '124 rue de la gare, 75 000 Paris - France'),
+        appBar: appBar_shared(context, widget.institut.nom, widget.institut.localisation),
         body : Column(
             children : [
               Photo_Institut(),
@@ -51,7 +54,7 @@ class _Profil_InstitutState extends State<Profil_Institut> {
               Expanded(
                 child: TabBarView(
                   children: [
-                    SingleChildScrollView(child: Presentation()), // Contenu de l'onglet 1
+                    SingleChildScrollView(child: Presentation(institut: widget.institut,)), // Contenu de l'onglet 1
                     Center(child: Text('Contenu de l\'Onglet 2')), // Contenu de l'onglet 2
                     Center(child: Text('Contenu de l\'Onglet 3')), // Contenu de l'onglet 3
                     Center(child: Text('Contenu de l\'Onglet 4')), // Contenu de l'onglet 4

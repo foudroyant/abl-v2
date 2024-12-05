@@ -1,9 +1,21 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../models/institut.dart';
+import '../models/prestation.dart';
 import '../screens/prendre_rdv.dart';
 
-class Presentation extends StatelessWidget {
-  const Presentation({Key? key}) : super(key: key);
+class Presentation extends StatefulWidget {
+  final Institut institut;
+  const Presentation({Key? key, required this.institut}) : super(key: key);
+
+  @override
+  _PresentationState createState() => _PresentationState();
+}
+
+class _PresentationState extends State<Presentation> {
+
+  List<Prestation> prestations = [];
 
 
   Widget _team(String texte, String image){
@@ -54,15 +66,15 @@ class Presentation extends StatelessWidget {
     );
   }
 
-  Widget _service(BuildContext context, bool at_home){
+  Widget _service(BuildContext context, Prestation prestation){
     return Column(
       children : [
         Text.rich(
         TextSpan(
         children: [
-          text_span('Balayage Classique\n', 16, false),
+          text_span('${prestation.nom}\n', 16, false),
         text_span('\n', 16, false),
-        text_span('Cette technique convient à presque tous les types de cheveux et est idéale pour ajouter de la luminosité et de la et est idéale pour ajouter de la luminosité et de la dimension sans un changement radical de couleur ', 13, false),
+        text_span(prestation.description, 13, false),
         text_span('voir plus...', 11, true)
         ],)
         ),
@@ -84,7 +96,7 @@ class Presentation extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width : 10), // mdi_car-off.png
-                at_home ? Icon(Icons.directions_car) : Image.asset(
+                prestation.a_domicile ? Icon(Icons.directions_car) : Image.asset(
                   "assets/images/mdi_car-off.png",
                   width: 20,
                   height: 18,
@@ -111,12 +123,22 @@ class Presentation extends StatelessWidget {
         Center(
           child: GestureDetector(
             onTap: () {
-              showModalBottomSheet(
-                  context: context,
-                  builder: (BuildContext context){
-                    return _bottomSheet(context);
-                  }
-              );
+              if(prestation.options.length > 0){
+                showModalBottomSheet(
+                    context: context,
+                    builder: (BuildContext context){
+                      return _bottomSheet(context, prestation);
+                    }
+                );
+              }
+              else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Prendre_RDV(service: prestation,),
+                  ),
+                );
+              }
             },
             child: Container(
               width: 350,
@@ -147,7 +169,7 @@ class Presentation extends StatelessWidget {
                         bottom: 10,
                       ),
                       child: Text(
-                        'Réserver à partir de 35 €',
+                        'Réserver à partir de ${prestation.prix} €',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.black,
@@ -171,7 +193,7 @@ class Presentation extends StatelessWidget {
   }
 
 
-  Widget _bottomSheet(BuildContext context){
+  Widget _bottomSheet(BuildContext context, Prestation prestation){
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Column(
@@ -326,7 +348,7 @@ class Presentation extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => Prendre_RDV(),
+                    builder: (context) => Prendre_RDV(service: prestation,),
                   ),
                 );
               },
@@ -348,9 +370,43 @@ class Presentation extends StatelessWidget {
     );
   }
 
+  void get_services(){
+    FirebaseFirestore.instance.collection("instituts").doc(widget.institut.id).collection("services").get().then(
+          (querySnapshot) {
+        print("Successfully completed");
+        for (var docSnapshot in querySnapshot.docs) {
+          //print('${docSnapshot.id} => ${docSnapshot.data()}');
+          setState((){
+            prestations.add(Prestation(
+                id: docSnapshot.id,
+                nom: docSnapshot.data()["nom"],
+                description: docSnapshot.data()["description"],
+                a_domicile: docSnapshot.data()["a_domicile"],
+                prix: docSnapshot.data()["prix"],
+                duree: docSnapshot.data()["duree"],
+                categorie: docSnapshot.data()["categorie"],
+                type: docSnapshot.data()["type"]
+            ));
+          });
+        }
+      },
+      onError: (e) => print("Error completing: $e"),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    get_services();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final List _liste = [1,2,3,4,5,6,7,8,9,10];
+
+    final List _liste = [0,1,2,3];
+    //final List _liste = widget.institut.categories.split(",").toSet().toList();
+    final List _categories = widget.institut.les_categories();
+
 
     return Container(
       padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
@@ -363,9 +419,9 @@ class Presentation extends StatelessWidget {
             width : double.infinity,
             height : 90,
             child : ListView.builder(
-              itemCount: _liste.length,
+              itemCount: _categories.length,
               itemBuilder: (context, index) {
-                return _team('Flash', "assets/images/femme.jpg");
+                return _team(_categories[index],"assets/images/femme.jpg");
               },
               scrollDirection: Axis.horizontal,
             )
@@ -384,10 +440,10 @@ class Presentation extends StatelessWidget {
             ),
           ),
           Column(
-            children : _liste.map((item){
+            children : prestations.map((item){
               return Column(
                 children : [
-                  _service(context, item%2==0), SizedBox(height : 10)
+                  _service(context, item), SizedBox(height : 10)
                 ]
               );
             }).toList()

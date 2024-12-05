@@ -1,9 +1,13 @@
 import 'package:ablv2/components/note.dart';
 import 'package:flutter/material.dart';
 
+import '../models/institut.dart';
 import '../utils/colors.dart';
 
 class Item_Resultat extends StatelessWidget {
+  final Institut institut;
+
+  Item_Resultat({required this.institut});
 
   Widget _day(String day, bool free){
     return Container(
@@ -34,6 +38,7 @@ class Item_Resultat extends StatelessWidget {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     return Container(
+      //color : Colors.white,
       padding: EdgeInsets.fromLTRB(10, 0, 10, 5),
       child: Column(
         children: [
@@ -60,7 +65,7 @@ class Item_Resultat extends StatelessWidget {
               children: [
                 Center(
                   child: Text(
-                    'AB Beauty Salon',
+                    institut.nom,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.black,
@@ -80,7 +85,7 @@ class Item_Resultat extends StatelessWidget {
           ),
           SizedBox(height : 5),
           Text(
-            '    124 rue de la gare, 75 000 Paris',
+            institut.localisation,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.black,
