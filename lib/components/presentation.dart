@@ -135,7 +135,7 @@ class _PresentationState extends State<Presentation> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => Prendre_RDV(service: prestation,),
+                    builder: (context) => Prendre_RDV(service: prestation, institut: widget.institut,),
                   ),
                 );
               }
@@ -348,7 +348,7 @@ class _PresentationState extends State<Presentation> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => Prendre_RDV(service: prestation,),
+                    builder: (context) => Prendre_RDV(service: prestation, institut: widget.institut,),
                   ),
                 );
               },

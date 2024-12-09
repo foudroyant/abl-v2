@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/creneau.dart';
 import 'constants.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +8,16 @@ List<String> moisFrancais = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
+
+List<String> joursFrancais = [
+  'Dimanche', 'Lundi', 'Mardi', 'Mercredi',
+  'Jeudi', 'Vendredi', 'Samedi'
+];
+
+String get_jour(DateTime date) {
+  // Extraire le jour, le mois et l'année
+  return joursFrancais[date.weekday % 7]; // Lundi = 1, Dimanche = 0
+}
 
 List<Creneau> generateIndisponibles() {
   List<Creneau> indisponibles = [];
@@ -25,6 +37,12 @@ List<Creneau> generateIndisponibles() {
 List<Creneau> genererCreneaux(DateTime heureDebut, DateTime heureFin) {
   List<Creneau> creneaux = [];
   List<Creneau> indisponibles = generateIndisponibles();
+
+
+  /*Timestamp timestamp = FieldValue.serverTimestamp() as Timestamp;
+
+  // Conversion en DateTime
+  DateTime dateTime = timestamp.toDate();*/
 
   DateTime prochainCreneau = heureDebut;
   while (prochainCreneau.isBefore(heureFin)) {
@@ -71,18 +89,11 @@ List<DateTime> getWeekDates(DateTime inputDate) {
 
 
 String formaterDate(DateTime date) {
-  // Liste des jours en français
-  List<String> joursFrancais = [
-    'Dimanche', 'Lundi', 'Mardi', 'Mercredi',
-    'Jeudi', 'Vendredi', 'Samedi'
-  ];
   // Extraire le jour, le mois et l'année
   String jour = joursFrancais[date.weekday % 7]; // Lundi = 1, Dimanche = 0
   String mois = moisFrancais[date.month - 1]; // Mois commence à 1
   String jourDuMois = date.day.toString().padLeft(2, '0'); // Ajouter un zéro si nécessaire
   int annee = date.year;
-
-  print(jour);
 
   return '$jour $jourDuMois $mois $annee';
 }

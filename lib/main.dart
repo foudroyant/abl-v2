@@ -5,6 +5,7 @@ import 'package:ablv2/screens/recap_rdv.dart';
 import 'package:ablv2/screens/recherche_abp.dart';
 import 'package:ablv2/screens/resultats.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'models/institut.dart';
 import 'models/institut_provider.dart';
+import 'models/user.dart';
 import 'models/utils.dart';
 
 void main() async {
@@ -35,6 +37,66 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   List<Institut> instituts = [];
+  User? user = FirebaseAuth.instance.currentUser;
+  late User_Model user_model;
+
+  @override
+  initState() {
+    if(user != null){
+      getUserById(user!.uid);
+    }
+    else {
+      User_Model defaultUser = User_Model(
+        email: 'default@example.com',
+        createdAt: Timestamp.now(),
+        personnes: [
+          Person(
+            nom: 'Default Person',
+            telephone: '+242 00 000 00 00',
+          ),
+        ],
+        phoneNumber: '+242 00 000 00 00',
+        displayName: 'Default User',
+      );
+      setState((){
+        user_model = User_Model.fromMap(defaultUser.toMap());
+      });
+    }
+  }
+
+ void getUserById(String userId) async {
+    try {
+      // Accéder au document dans la collection "users"
+      DocumentSnapshot document = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (document.exists) {
+        final _user = document.data() as Map<String, dynamic>; // Retourne les données sous forme de Map
+        setState((){
+          user_model = User_Model.fromMap(_user);
+        });
+
+      } else {
+        print("Utilisateur introuvable");
+        // Objet par défaut pour User_Model
+        User_Model defaultUser = User_Model(
+          email: 'default@example.com',
+          createdAt: Timestamp.now(),
+          personnes: [
+            Person(
+              nom: 'Default Person',
+              telephone: '+242 00 000 00 00',
+            ),
+          ],
+          phoneNumber: '+242 00 000 00 00',
+          displayName: 'Default User',
+        );
+        setState((){
+          user_model = User_Model.fromMap(defaultUser.toMap());
+        });
+      }
+    } catch (e) {
+      throw Exception("Erreur lors de la récupération de l'utilisateur: $e");
+    }
+  }
 
   // Fonction pour récupérer les instituts par catégorie
   Future<void> getInstitutsByCategory() async {
@@ -63,6 +125,7 @@ class _MyAppState extends State<MyApp> {
             categories: doc['categories'],
             adresse: doc['adresse'],
             tendance: doc['tendance'],
+            horaires: doc['horaires'],
           );
         }).toList();
       });
@@ -81,6 +144,10 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider(
           create: (context) => Institut_Provider(instituts: instituts),
+        ),
+
+        ChangeNotifierProvider(
+          create: (context) => User_Provider(user: user_model),
         ),
       ],
       child: MaterialApp(

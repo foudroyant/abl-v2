@@ -1,8 +1,10 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../models/creneau.dart';
+import '../models/institut.dart';
 import '../models/prestation.dart';
 import '../screens/recap_rdv.dart';
 import '../utils/colors.dart';
@@ -13,7 +15,8 @@ class Indisponible extends StatefulWidget {
   final DateTime day;
   final Prestation service;
   final List<Option> options;
-  const Indisponible({Key? key, required this.day, required this.service, required this.options,}) : super(key: key);
+  final Institut institut;
+  const Indisponible({Key? key, required this.day, required this.service, required this.options, required this.institut,}) : super(key: key);
 
   @override
   State<Indisponible> createState() => _IndisponibleState();
@@ -21,14 +24,28 @@ class Indisponible extends StatefulWidget {
 
 class _IndisponibleState extends State<Indisponible> {
 
-  Widget _button(String texte, bool disponible){
+  late DateTime open ;
+  late DateTime close;
+
+  @override
+  initState(){
+
+    setState((){
+      open = DateTime.parse(widget.institut.horaires[get_jour(widget.day)]['Ouverture'][0]);
+      close = DateTime.parse(widget.institut.horaires[get_jour(widget.day)]['Ouverture'][1]);
+    });
+  }
+
+  Widget _button(Creneau creneau, bool disponible){
     return InkWell(
       onTap: () {
         if(disponible){
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => Recap_RDV(),
+              builder: (context) => Recap_RDV(
+                institut: widget.institut, prestation: widget.service, options: widget.options, jour: widget.day, creneau: creneau
+              ),
             ),
           );
         }
@@ -44,7 +61,7 @@ class _IndisponibleState extends State<Indisponible> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
             ),
             child: Center(
-              child: Text(texte, textAlign: TextAlign.center,
+              child: Text("${creneau.creneau.hour}:${creneau.creneau.minute}", textAlign: TextAlign.center,
                 style: TextStyle(
                   color: disponible ? Colors.white : Color(0xFFB5ADAD),
                   fontSize: 10,
@@ -60,6 +77,7 @@ class _IndisponibleState extends State<Indisponible> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+
     return Container(
         padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
       width : screenWidth,
@@ -124,11 +142,12 @@ class _IndisponibleState extends State<Indisponible> {
           ),
           SizedBox(height : 10),
           Wrap(
-            children : genererCreneaux(DateTime(2024,12,6,08,00), DateTime(2024,12,6,18,00)).map((item){
+            children : genererCreneaux(open,close).map((item){
               bool randomBool = Random().nextBool();
               bool etat = item.etat == Etat.DISPONIBLE;
+
               return Wrap(
-                children : [_button("${item.creneau.hour}:${item.creneau.minute}", etat), SizedBox(width : 10),]
+                children : [_button(item, etat), SizedBox(width : 10),]
               );
             }).toList()
           ),

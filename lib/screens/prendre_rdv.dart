@@ -4,12 +4,14 @@ import '../components/indisponible.dart';
 import '../components/photo_institut.dart';
 import '../components/ui_shared.dart';
 import '../models/creneau.dart';
+import '../models/institut.dart';
 import '../models/prestation.dart';
 import '../utils/fn_global.dart';
 
 class Prendre_RDV extends StatefulWidget {
   final Prestation service;
-  const Prendre_RDV({Key? key, required this.service}) : super(key: key);
+  final Institut institut;
+  const Prendre_RDV({Key? key, required this.service, required this.institut}) : super(key: key);
 
   @override
   State<Prendre_RDV> createState() => _Prendre_RDVState();
@@ -144,7 +146,7 @@ class _Prendre_RDVState extends State<Prendre_RDV> {
             ),
             Column(
               children : getWeekDates(DateTime.now()).map((item){
-                return Indisponible(day: item, service: widget.service, options: [],);
+                return Indisponible(day: item, service: widget.service, options: [], institut: widget.institut,);
               }).toList()
             )
           ]

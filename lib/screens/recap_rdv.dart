@@ -1,10 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../components/photo_institut.dart';
 import '../components/ui_shared.dart';
+import '../models/creneau.dart';
+import '../models/institut.dart';
+import '../models/prestation.dart';
+import '../models/user.dart';
+import '../utils/fn_global.dart';
 
 class Recap_RDV extends StatefulWidget {
-  const Recap_RDV({Key? key}) : super(key: key);
+  final Institut institut;
+  final Prestation prestation;
+  final List<Option> options;
+  final DateTime jour;
+  final Creneau creneau;
+  const Recap_RDV({Key? key, required this.institut, required this.prestation, required this.options, required this.jour, required this.creneau}) : super(key: key);
 
   @override
   State<Recap_RDV> createState() => _Recap_RDVState();
@@ -14,7 +27,29 @@ class _Recap_RDVState extends State<Recap_RDV> {
 
   final List<String> _options = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
   String? _selectedValue;
-  List _personnes = [0,1,2,3,4];
+  int index_personne = 0;
+  int index_payement = 0;
+  int nbre_de_jours = 0;
+
+  User? user = FirebaseAuth.instance.currentUser;
+
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Variable pour afficher les erreurs
+  String? _errorMessage;
+
+
+  @override
+  initState(){
+    Duration difference = widget.jour.difference(DateTime.now());
+    setState((){
+      nbre_de_jours = (difference.inHours / 24).round() ;
+    });
+  }
+
 
   Widget _galerie(double w, double h, String image){
     return Stack(
@@ -145,7 +180,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
     );
   }
 
-  Widget _personne_ligne(int item){
+  Widget _personne_ligne(Person item, int index){
 
     return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,7 +238,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
             ),
             SizedBox(width : 10),
             Text(
-              'Moi',
+              item.nom,
               style: TextStyle(
                 color: Color(0xFF1D1B20),
                 fontSize: 14,
@@ -216,9 +251,21 @@ class _Recap_RDVState extends State<Recap_RDV> {
           ],
         ),
         Checkbox(
-          value: true,
+          value: index == index_personne,
           onChanged: (bool? newValue) {
             setState(() {
+              print(newValue);
+              if(newValue == true){
+                setState((){
+                  index_personne = index;
+                });
+              }
+              else {
+                setState((){
+                  //index_personne = index;
+                });
+              }
+
               //_personnes[item] = _personnes[item] + 1;
             });
           },
@@ -227,9 +274,89 @@ class _Recap_RDVState extends State<Recap_RDV> {
     );
   }
 
+  // Méthode pour se connecter
+  Future<void> _login() async {
+    try {
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+      // Si la connexion réussit, naviguez vers l'écran d'accueil
+      if (userCredential.user != null) {
+        emailController.text = "";
+        passwordController.text = "";
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Erreur de connexion : ${e.toString()}";
+      });
+    }
+  }
+
+  Future<void> registerUser(
+      String email, String password,
+      String nom,
+      String telephone,
+      BuildContext context
+      ) async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      // Ajouter les informations de l'utilisateur dans Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'displayName': nom,
+        'email': email,
+        'phoneNumber' : telephone,
+        'createdAt': FieldValue.serverTimestamp(),
+        'personnes' : [
+          {
+            'nom' : nom,
+            'telephone' : telephone
+          }
+        ]
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Utilisateur créé : ${userCredential.user?.email}")),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      if (e.code == 'weak-password') {
+        errorMessage = "Le mot de passe est trop faible.";
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = "L'email est déjà utilisé.";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "L'adresse e-mail est invalide.";
+      } else {
+        errorMessage = "Une erreur est survenue : ${e.message}";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
+
+  Future<void> logoutUser(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Déconnecté avec succès")),
+      );
+      // Rediriger vers l'écran de connexion ou une autre page
+      Navigator.pushReplacementNamed(context, '/login'); // Exemple : '/login'
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur lors de la déconnexion : $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+
 
     return Scaffold(
       appBar: appBar_shared(context, 'AB Beauty Salon', '124 rue de la gare, 75 000 Paris - France'),
@@ -268,7 +395,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       ),
                     ),
                     child : Text(
-                      'Dans 2 jours',
+                      'Dans ${nbre_de_jours} jours',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black,
@@ -309,7 +436,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                         ),
                       ),
                       TextSpan(
-                        text: 'Balayage classique \n',
+                        text: '${widget.prestation.nom} \n',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,
@@ -338,7 +465,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           //height: 0.13,
                         ),
                       ),
-                      TextSpan(
+                      widget.options.length > 0 ? TextSpan(
                         text: 'Option 1 + Option 2 + Option 3 + Option 4 \n',
                         style: TextStyle(
                           color: Colors.black,
@@ -347,9 +474,9 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           fontWeight: FontWeight.w500,
                           //height: 0.13,
                         ),
-                      ),
+                      ) : TextSpan(),
                       TextSpan(
-                        text: 'Description : cette technique convient à presque tous les types de cheveux et est idéale pour ajouter de  ',
+                        text: 'Description : ${widget.prestation.description} ',
                         style: TextStyle(
                           color: Colors.black.withOpacity(0.6000000238418579),
                           fontSize: 14,
@@ -441,7 +568,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           ),
                         ),
                         TextSpan(
-                          text: ' - Nom Institut',
+                          text: ' - ${widget.institut.nom}',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 14,
@@ -473,7 +600,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                     ),
                   ),
                   Text(
-                    'Mercredi, 24 Nov. à 15:30',
+                    '${formaterDate(widget.jour)}, à ${widget.creneau.creneau.hour}:${widget.creneau.creneau.minute}',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: Colors.black,
@@ -622,7 +749,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
               }).toList()
             ),
 
-            Container(
+            FirebaseAuth.instance.currentUser == null ? Container(
                 padding: EdgeInsets.fromLTRB(15, 10, 15, 10),
               child : Text(
                 'Identification',
@@ -633,10 +760,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   fontWeight: FontWeight.w500,
                 ),
               )
-            ),
+            ) : Container(),
 
             //TELEPHONE OU MAIL
-            Container(
+            FirebaseAuth.instance.currentUser == null ? Container(
               padding: EdgeInsets.fromLTRB(15, 10, 15, 5),
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -667,26 +794,27 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       ),
                     ),
                     child : TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         hintText: 'mon.indentification@mail.com',
                         border: InputBorder.none, // Pas de bordure par défaut
-                        contentPadding: EdgeInsets.symmetric(vertical: 11, horizontal: 0),
+                        contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
                       ),
                       style : TextStyle(
                         color: Colors.black.withOpacity(0.8500000238418579),
                         fontSize: 13,
                         fontFamily: 'Roboto',
                         fontWeight: FontWeight.w500,
-                        height: 0,
                       ),
                     )
                   ),
                 ]
               ),
-            ),
+            ) : Container(),
 
             //MOT DE PASSE
-            Container(
+            FirebaseAuth.instance.currentUser == null ? Container(
               padding: EdgeInsets.fromLTRB(15, 5, 15, 15),
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -707,7 +835,6 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       height: 30,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                       decoration: ShapeDecoration(
-                        color: Colors.white,
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
                             width: 1,
@@ -717,32 +844,44 @@ class _Recap_RDVState extends State<Recap_RDV> {
                         ),
                       ),
                       child : TextField(
+                        controller: passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
                           hintText: '*********************',
                           border: InputBorder.none, // Pas de bordure par défaut
-                          contentPadding: EdgeInsets.symmetric(vertical: 11, horizontal: 0),
+                          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
                         ),
                         style : TextStyle(
                           color: Colors.black.withOpacity(0.8500000238418579),
                           fontSize: 13,
                           fontFamily: 'Roboto',
                           fontWeight: FontWeight.w500,
-                          height: 0,
                         ),
                       )
                     ),
                   ]
               ),
-            ),
+            ) : Container(),
 
-            Container(
+            FirebaseAuth.instance.currentUser == null ? Container(
               padding: EdgeInsets.fromLTRB(15, 5, 15, 5),
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children : [
                   ElevatedButton(
-                    onPressed: () {  },
+                    onPressed: () async {
+                      await registerUser(
+                          emailController.text,
+                          passwordController.text,
+                          'Utilisateur Client',
+                          '+242 00 000 11 22',
+                          context,
+                      );
+
+                      setState((){
+
+                      });
+                    },
                     child: Text("Inscription"),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.black.withOpacity(0.5),
@@ -754,7 +893,9 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   ),
 
                   ElevatedButton(
-                    onPressed: () {  },
+                    onPressed: () {
+                      onPressed: _login;
+                    },
                     child: Text("Se connecter"),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
@@ -766,9 +907,9 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   ),
                 ]
               ),
-            ),
+            ) : Container(),
 
-            Container(
+            FirebaseAuth.instance.currentUser != null ? Container(
               padding: EdgeInsets.fromLTRB(15, 20, 15, 10),
               child: Text(
                 'Pour qui ?',
@@ -780,55 +921,63 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   height: 0.04,
                 ),
               ),
-            ),
+            ) : Container(),
 
-            Container(
+            FirebaseAuth.instance.currentUser != null ? Container(
               padding: EdgeInsets.fromLTRB(15, 20, 15, 10),
               child : Column(
-                children: _personnes.asMap().entries.map((entry) {
+                children: context.read<User_Provider>().user.personnes.asMap().entries.map((entry) {
                   int index = entry.key;
                   var item = entry.value;
 
                   return Column(
                     children: [
-                      _personne_ligne(index),   // Affiche l'index de chaque élément
+                      _personne_ligne(item, index),   // Affiche l'index de chaque élément
                       SizedBox(height: 10),
                     ],
                   );
                 }).toList(),
               )
-            ),
-            Container(
-                padding: EdgeInsets.fromLTRB(20, 0, 15, 10),
-              child : Row(
-                children : [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
-                      color: Colors.black.withOpacity(0.25),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(100),
+            ) : Container(),
+            FirebaseAuth.instance.currentUser != null ?  InkWell(
+              onTap : (){
+                logoutUser(context);
+                setState((){
+
+                });
+              },
+              child: Container(
+                  padding: EdgeInsets.fromLTRB(20, 0, 15, 10),
+                child : Row(
+                  children : [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: Colors.black.withOpacity(0.25),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                      ),
+                      child : Center(child: Icon(Icons.person_add))
+                    ),
+                    SizedBox(width : 10),
+                    Text(
+                      'Nouvelle personne',
+                      style: TextStyle(
+                        color: Color(0xFF1D1B20),
+                        fontSize: 16,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w400,
+                        height: 0.09,
+                        letterSpacing: 0.50,
                       ),
                     ),
-                    child : Center(child: Icon(Icons.person_add))
-                  ),
-                  SizedBox(width : 10),
-                  Text(
-                    'Nouvelle personne',
-                    style: TextStyle(
-                      color: Color(0xFF1D1B20),
-                      fontSize: 16,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w400,
-                      height: 0.09,
-                      letterSpacing: 0.50,
-                    ),
-                  ),
-                ]
-              )
-            ),
+                  ]
+                )
+              ),
+            ) : Container(),
 
             Container(
                 padding: EdgeInsets.fromLTRB(20, 20, 15, 20),
@@ -944,10 +1093,11 @@ class _Recap_RDVState extends State<Recap_RDV> {
                         ),
                       ),
                       Checkbox(
-                        value: true,
+                        value: index_payement == 0,
                         onChanged: (bool? newValue) {
                           setState(() {
                             //_personnes[item] = _personnes[item] + 1;
+                            if(newValue == true) index_payement = 0;
                           });
                         },
                       )
@@ -969,10 +1119,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           ),
                         ),
                         Checkbox(
-                          value: false,
+                          value: index_payement == 1,
                           onChanged: (bool? newValue) {
                             setState(() {
-                              //_personnes[item] = _personnes[item] + 1;
+                              if(newValue == true) index_payement = 1;
                             });
                           },
                         )
@@ -994,10 +1144,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           ),
                         ),
                         Checkbox(
-                          value: false,
+                          value: index_payement == 2,
                           onChanged: (bool? newValue) {
                             setState(() {
-                              //_personnes[item] = _personnes[item] + 1;
+                              if(newValue == true) index_payement = 2;
                             });
                           },
                         )
@@ -1005,7 +1155,32 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   )
                 ]
               )
-            )
+            ),
+
+            FirebaseAuth.instance.currentUser != null ?Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  width: 354,
+                  height: 35,
+                  decoration: ShapeDecoration(
+                    color: Color(0xC429C90F),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                  ),
+                  child : Text(
+                    'Valider',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ) : Container(),
           ]
         )
       )

@@ -10,6 +10,7 @@ class Institut {
   String adresse;
   String tendance;
   String id;
+  Map horaires;
 
   // Constructeur de la classe
   Institut({
@@ -23,6 +24,7 @@ class Institut {
     required this.categories,
     required this.adresse,
     required this.tendance,
+    required this.horaires,
   });
 
   List<String> les_categories(){
