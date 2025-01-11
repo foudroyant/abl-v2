@@ -19,7 +19,18 @@ String get_jour(DateTime date) {
   return joursFrancais[date.weekday % 7]; // Lundi = 1, Dimanche = 0
 }
 
-List<Creneau> generateIndisponibles() {
+Etat getEtat(int etat){
+  switch(etat){
+    case 0 : return Etat.DISPONIBLE; break;
+    case 1 : return Etat.INDISPONIBLE; break;
+    case 2 : return Etat.ANNULE; break;
+    case 3 : return Etat.HC; break;
+    case 4 : return Etat.RESERVE; break;
+    default : return Etat.DISPONIBLE; break;
+  }
+}
+
+/*List<Creneau> generateIndisponibles() {
   List<Creneau> indisponibles = [];
   for (int i = 0; i < 10; i++) {
     DateTime date = DateTime(2024, 12, i + 5, 8 + i); // Exemple de date et heure
@@ -32,12 +43,11 @@ List<Creneau> generateIndisponibles() {
     indisponibles.add(creneau);
   }
   return indisponibles;
-}
+}*/
 
-List<Creneau> genererCreneaux(DateTime heureDebut, DateTime heureFin) {
+List<Creneau> genererCreneaux(DateTime heureDebut, DateTime heureFin, List<Creneau> indisponibles) {
   List<Creneau> creneaux = [];
-  List<Creneau> indisponibles = generateIndisponibles();
-
+  //List<Creneau> indisponibles = generateIndisponibles();
 
   /*Timestamp timestamp = FieldValue.serverTimestamp() as Timestamp;
 
@@ -61,12 +71,14 @@ List<Creneau> genererCreneaux(DateTime heureDebut, DateTime heureFin) {
         date: dateSansHeure,  // La date est à 00:00
         etat: _indisp[0].etat,
         creneau: prochainCreneau,  // Le créneau garde l'heure et la minute
+        membres : _indisp[0].membres
       ));
     } else {
       creneaux.add(Creneau(
         date: dateSansHeure,  // La date est à 00:00
         etat: Etat.DISPONIBLE,
-        creneau: prochainCreneau,  // Le créneau garde l'heure et la minute
+        creneau: prochainCreneau, // Le créneau garde l'heure et la minute
+        membres: [],
       ));
     }
 

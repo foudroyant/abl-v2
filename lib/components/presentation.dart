@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/institut.dart';
 import '../models/prestation.dart';
-import '../screens/prendre_rdv.dart';
+import '../screens/prendre_RDV/screen.dart';
 
 class Presentation extends StatefulWidget {
   final Institut institut;

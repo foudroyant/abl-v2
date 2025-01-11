@@ -2,8 +2,8 @@ import 'package:ablv2/screens/recherche_abp.dart';
 import 'package:ablv2/screens/resultats.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../components/tendance.dart';
-import '../models/tendances.dart';
+import '../../components/tendance.dart';
+import '../../models/tendances.dart';
 import '/components/annonce.dart';
 import '/components/annonce_abp.dart';
 import '/components/header.dart';
@@ -38,7 +38,6 @@ class _HomeState extends State<Home> {
     super.initState();
     db.collection("tendances").get().then(
           (querySnapshot) {
-        print("Successfully completed");
         for (var docSnapshot in querySnapshot.docs) {
           setState((){
             tendances.add(Tendance_Model(

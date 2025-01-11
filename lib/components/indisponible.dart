@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import '../models/creneau.dart';
 import '../models/institut.dart';
 import '../models/prestation.dart';
-import '../screens/recap_rdv.dart';
+import '../screens/prendre_RDV/models.dart';
+import '../screens/recap/recap_rdv.dart';
 import '../utils/colors.dart';
 import '../utils/constants.dart';
 import '../utils/fn_global.dart';
@@ -16,7 +17,9 @@ class Indisponible extends StatefulWidget {
   final Prestation service;
   final List<Option> options;
   final Institut institut;
-  const Indisponible({Key? key, required this.day, required this.service, required this.options, required this.institut,}) : super(key: key);
+  final List<Creneau> indisponibles;
+  final Team membre;
+  const Indisponible({Key? key, required this.day, required this.service, required this.options, required this.institut, required this.indisponibles, required this.membre,}) : super(key: key);
 
   @override
   State<Indisponible> createState() => _IndisponibleState();
@@ -34,6 +37,7 @@ class _IndisponibleState extends State<Indisponible> {
       open = DateTime.parse(widget.institut.horaires[get_jour(widget.day)]['Ouverture'][0]);
       close = DateTime.parse(widget.institut.horaires[get_jour(widget.day)]['Ouverture'][1]);
     });
+
   }
 
   Widget _button(Creneau creneau, bool disponible){
@@ -78,6 +82,8 @@ class _IndisponibleState extends State<Indisponible> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
+    //List indispo = widget.indisponibles.where((i)=>i.membres.contains(widget.membre.user)).toList();
+    //print(widget.indisponibles);
     return Container(
         padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
       width : screenWidth,
@@ -142,7 +148,7 @@ class _IndisponibleState extends State<Indisponible> {
           ),
           SizedBox(height : 10),
           Wrap(
-            children : genererCreneaux(open,close).map((item){
+            children : genererCreneaux(open,close, widget.indisponibles).map((item){
               bool randomBool = Random().nextBool();
               bool etat = item.etat == Etat.DISPONIBLE;
 

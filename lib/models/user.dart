@@ -5,6 +5,11 @@ class User_Provider with ChangeNotifier {
   User_Model user;
   //notifyListeners();
   User_Provider({ required this.user,});
+
+  add_person(Person p){
+    user.add_person(p);
+    notifyListeners();
+  }
 }
 
 class User_Model {
@@ -22,6 +27,9 @@ class User_Model {
     required this.displayName,
   });
 
+  add_person(Person p){
+    personnes.add(p);
+  }
 
   // Méthode pour convertir un Map en une instance de User
   factory User_Model.fromMap(Map<String, dynamic> map) {
@@ -76,4 +84,38 @@ class Person {
 
   }
 
+}
+
+class User_Info {
+  final String displayName;
+  final String telephone;
+  final String email;
+  final String uid;
+
+  User_Info({
+    required this.displayName,
+    required this.telephone,
+    required this.email,
+    required this.uid,
+  });
+
+  // Convertir UserInfo en Map
+  Map<String, dynamic> toMap() {
+    return {
+      'displayName': displayName,
+      'telephone': telephone,
+      'email': email,
+      'uid': uid,
+    };
+  }
+
+  // Créer un objet UserInfo à partir d'une Map
+  factory User_Info.fromMap(Map<String, dynamic> map) {
+    return User_Info(
+      displayName: map['displayName'] ?? '',
+      telephone: map['telephone'] ?? '',
+      email: map['email'] ?? '',
+      uid: map['uid'] ?? '',
+    );
+  }
 }

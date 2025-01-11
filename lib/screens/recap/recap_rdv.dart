@@ -3,13 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../components/photo_institut.dart';
-import '../components/ui_shared.dart';
-import '../models/creneau.dart';
-import '../models/institut.dart';
-import '../models/prestation.dart';
-import '../models/user.dart';
-import '../utils/fn_global.dart';
+import '../../components/photo_institut.dart';
+import '../../components/ui_shared.dart';
+import '../../models/creneau.dart';
+import '../../models/institut.dart';
+import '../../models/prestation.dart';
+import '../../models/user.dart';
+import '../../utils/fn_global.dart';
+import 'add_person.dart';
+import 'models.dart';
 
 class Recap_RDV extends StatefulWidget {
   final Institut institut;
@@ -25,41 +27,156 @@ class Recap_RDV extends StatefulWidget {
 
 class _Recap_RDVState extends State<Recap_RDV> {
 
-  final List<String> _options = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
-  String? _selectedValue;
+  final List<String> occurences = [
+    "Aucune",
+    "Tous les mois",
+    "Tous les semaines"
+  ];
+  String? occurence_selected;
   int index_personne = 0;
   int index_payement = 0;
   int nbre_de_jours = 0;
 
+
+  final _formKey = GlobalKey<FormState>();
+  final _nomController = TextEditingController();
+  final _prenomController = TextEditingController();
+  final _telephoneController = TextEditingController();
+
+  final _promoCtrl = TextEditingController();
+
   User? user = FirebaseAuth.instance.currentUser;
-
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  late User_Model user_model;
+  List<Person> personnes = [];
+
+  List<Map> experiences = [
+    {
+      "exp": Prestation_Exp(
+          label: 'Experience 1',
+          temps: '45min',
+          prix: 80,
+          image: 'https://cdn.pixabay.com/photo/2020/04/30/03/58/john-tyler-5111297_960_720.png'
+      ),
+      "selected": false
+    },
+    {
+      "exp": Prestation_Exp(
+          label: 'Exp 2',
+          temps: '60min',
+          prix: 50,
+          image: 'https://cdn.pixabay.com/photo/2013/07/12/18/42/john-f-kennedy-153721_960_720.png'
+      ),
+      "selected": false
+    },
+    {
+      "exp": Prestation_Exp(
+          label: 'Exp 3',
+          temps: '40min',
+          prix: 300,
+          image: 'https://cdn.pixabay.com/photo/2020/05/23/12/34/girl-5209390_1280.jpg'
+      ),
+      "selected": false
+    },
+    {
+      "exp": Prestation_Exp(
+          label: 'Exp 4',
+          temps: '30min',
+          prix: 150,
+          image: 'https://cdn.pixabay.com/photo/2017/08/01/11/48/woman-2564660_1280.jpg'
+      ),
+      "selected": false
+    },
+    {
+      "exp": Prestation_Exp(
+          label: 'Exp 5',
+          temps: '20min',
+          prix: 30,
+          image: 'https://cdn.pixabay.com/photo/2020/10/17/17/41/girl-5662873_1280.jpg'
+      ),
+      "selected": false
+    },
+  ];
+
+
 
   // Variable pour afficher les erreurs
   String? _errorMessage;
 
+  List<Promotion> check_promo(String code){
+    return widget.institut.promotions.where((p) => p.code == code).toList();
+  }
+
+  Future<void> updatePersonnes(String userId, List<Map<String, dynamic>> newPersonnes) async {
+    try {
+      // Référence à la collection Firestore "users"
+      CollectionReference users = FirebaseFirestore.instance.collection('users');
+
+      // Mise à jour de la clé "personnes"
+      await users.doc(userId).update({'personnes': newPersonnes});
+
+    } catch (e) {
+      print("Erreur lors de la mise à jour de 'personnes' : $e");
+    }
+  }
+
+  getUserById(String userId) async {
+    try {
+      // Accéder au document dans la collection "users"
+      DocumentSnapshot document = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (document.exists) {
+        final _user = document.data() as Map<String, dynamic>; // Retourne les données sous forme de Map
+        User_Model _user_model = User_Model.fromMap(_user);
+        /*setState((){
+          user_model = User_Model.fromMap(_user);
+          user_model.add_person(Person(
+            nom: "Moi",
+            telephone: user!.phoneNumber!,
+          ));
+        });*/
+
+        List<Person> _personnes = _user_model.personnes;
+        setState((){
+          personnes = _personnes;
+        });
+      } else {}
+
+    } catch (e) {
+      throw Exception("Erreur lors de la récupération de l'utilisateur: $e");
+    }
+  }
 
   @override
-  initState(){
+  initState() {
     Duration difference = widget.jour.difference(DateTime.now());
     setState((){
       nbre_de_jours = (difference.inHours / 24).round() ;
     });
+    getUserById(user!.uid);
+
+    //print(widget.prestation.toMap());
+  }
+
+  @override
+  void dispose() {
+    _nomController.dispose();
+    _prenomController.dispose();
+    _telephoneController.dispose();
+    super.dispose();
   }
 
 
-  Widget _galerie(double w, double h, String image){
-    return Stack(
+  Widget _galerie(double w, double h, Map exp, int index){
+    Prestation_Exp prestation = exp["exp"];
+    return prestation != null ? Stack(
       children: [
         Container(
           width: w,
           height: h,
           decoration: ShapeDecoration(
             image: DecorationImage(
-              image: AssetImage(image),
+              image: NetworkImage(prestation.image),
               fit: BoxFit.fill,
             ),
             shape: RoundedRectangleBorder(
@@ -70,9 +187,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
         Container(
           width : w,
           height : h,
+          color : experiences[index]["selected"] == true ? Color.fromRGBO(0, 0, 0, 0.5) : Color.fromRGBO(0, 0, 0, 0),
           child : Center(
             child: Text(
-              'Coiffure',
+              prestation.label,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -96,22 +214,22 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   //side: BorderSide(width: 2, color: Color(0xFFADB5BD)),
                 ),
               ),
-            child: IconButton(
-              icon: Icon(Icons.add), // Icône du bouton
-              color: Colors.white, // Couleur de l'icône
-              onPressed: () {
-                // Action lorsque le bouton est pressé
-                print("Bouton appuyé !");
+            child: InkWell(
+              onTap : (){
+                setState((){
+                  experiences[index]["selected"] = !experiences[index]["selected"];
+                });
               },
-              iconSize: 20.0, // Taille de l'icône
+                child: Icon(Icons.add)
             ),
           ),
         )
       ],
-    );
+    ) : Container();
   }
 
-  Widget _ligne_choix(double ecran){
+  Widget _ligne_choix(Map experience, double ecran){
+
     return Container(
         padding: EdgeInsets.fromLTRB(15, 0, 15, 10),
         child : Row(
@@ -123,7 +241,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   children: [
                     Icon(Icons.check, color : Colors.green),
                     Text(
-                      'Coupe + Coiffage',
+                      experience["exp"].label,
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 12,
@@ -143,7 +261,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       Icon(Icons.favorite),
                       SizedBox(width : 5),
                       Text(
-                        '30  min',
+                        experience["exp"].temps,
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 12,
@@ -163,7 +281,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       Icon(Icons.money),
                       SizedBox(width : 5),
                       Text(
-                        '25 €',
+                        '${experience["exp"].prix} €',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 12,
@@ -254,7 +372,6 @@ class _Recap_RDVState extends State<Recap_RDV> {
           value: index == index_personne,
           onChanged: (bool? newValue) {
             setState(() {
-              print(newValue);
               if(newValue == true){
                 setState((){
                   index_personne = index;
@@ -274,84 +391,6 @@ class _Recap_RDVState extends State<Recap_RDV> {
     );
   }
 
-  // Méthode pour se connecter
-  Future<void> _login() async {
-    try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-      // Si la connexion réussit, naviguez vers l'écran d'accueil
-      if (userCredential.user != null) {
-        emailController.text = "";
-        passwordController.text = "";
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = "Erreur de connexion : ${e.toString()}";
-      });
-    }
-  }
-
-  Future<void> registerUser(
-      String email, String password,
-      String nom,
-      String telephone,
-      BuildContext context
-      ) async {
-    try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      // Ajouter les informations de l'utilisateur dans Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-        'displayName': nom,
-        'email': email,
-        'phoneNumber' : telephone,
-        'createdAt': FieldValue.serverTimestamp(),
-        'personnes' : [
-          {
-            'nom' : nom,
-            'telephone' : telephone
-          }
-        ]
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Utilisateur créé : ${userCredential.user?.email}")),
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-
-      if (e.code == 'weak-password') {
-        errorMessage = "Le mot de passe est trop faible.";
-      } else if (e.code == 'email-already-in-use') {
-        errorMessage = "L'email est déjà utilisé.";
-      } else if (e.code == 'invalid-email') {
-        errorMessage = "L'adresse e-mail est invalide.";
-      } else {
-        errorMessage = "Une erreur est survenue : ${e.message}";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    }
-  }
-
-  Future<void> logoutUser(BuildContext context) async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Déconnecté avec succès")),
-      );
-      // Rediriger vers l'écran de connexion ou une autre page
-      Navigator.pushReplacementNamed(context, '/login'); // Exemple : '/login'
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur lors de la déconnexion : $e")),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -633,9 +672,9 @@ class _Recap_RDVState extends State<Recap_RDV> {
                     ),
                     DropdownButton<String>(
                       hint: Text('Sélectionner une option'), // Texte de l'indication
-                      value: _selectedValue, // La valeur sélectionnée actuelle
+                      value: occurence_selected, // La valeur sélectionnée actuelle
                       icon: Icon(Icons.arrow_drop_down), // Icône du menu déroulant
-                      items: _options.map((String option) {
+                      items: occurences.map((String option) {
                         return DropdownMenuItem<String>(
                           value: option,
                           child: Text(option),
@@ -643,7 +682,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                       }).toList(),
                       onChanged: (String? newValue) {
                         setState(() {
-                          _selectedValue = newValue; // Mise à jour de la valeur sélectionnée
+                          occurence_selected = newValue; // Mise à jour de la valeur sélectionnée
                         });
                       },
                     )
@@ -718,23 +757,23 @@ class _Recap_RDVState extends State<Recap_RDV> {
                 padding: EdgeInsets.fromLTRB(15, 0, 15, 10),
               child : Row(
                 children : [
-                  _galerie(130, 175, "assets/images/cheveux.png"),
+                  _galerie(130, 175, experiences[0], 0),
                   SizedBox(width : 10),
                   Column(
                    children : [
                      Row(
                        children : [
-                         _galerie(130, 85, "assets/images/cheveux.png"),
+                         _galerie(130, 85, experiences[1], 1),
                          SizedBox(width : 5),
-                         _galerie(100, 85, "assets/images/cheveux.png"),
+                         _galerie(100, 85, experiences[2], 2),
                        ]
                      ),
                      SizedBox(height : 5),
                      Row(
                          children : [
-                           _galerie(130, 85, "assets/images/cheveux.png"),
+                           _galerie(130, 85, experiences[3], 3),
                            SizedBox(width : 5),
-                           _galerie(100, 85, "assets/images/cheveux.png"),
+                           _galerie(100, 85, experiences[4], 4),
                          ]
                      )
                    ]
@@ -744,170 +783,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
             ),
 
             Column(
-              children : [0,1,2,3].map((item){
-                return _ligne_choix(screenWidth);
+              children : experiences.where((e)=>e["selected"] == true).map((item){
+                return _ligne_choix(item,screenWidth);
               }).toList()
             ),
-
-            FirebaseAuth.instance.currentUser == null ? Container(
-                padding: EdgeInsets.fromLTRB(15, 10, 15, 10),
-              child : Text(
-                'Identification',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w500,
-                ),
-              )
-            ) : Container(),
-
-            //TELEPHONE OU MAIL
-            FirebaseAuth.instance.currentUser == null ? Container(
-              padding: EdgeInsets.fromLTRB(15, 10, 15, 5),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children : [
-                  Text(
-                    'Téléphone ou Mail* ',
-                    style: TextStyle(
-                      color: Colors.black.withOpacity(0.6000000238418579),
-                      fontSize: 14,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w400,
-                      height: 0,
-                    ),
-                  ),
-
-                  Container(
-                    width: 236,
-                    height: 30,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                    decoration: ShapeDecoration(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 1,
-                          color: Colors.black.withOpacity(0.10000000149011612),
-                        ),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                    ),
-                    child : TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: 'mon.indentification@mail.com',
-                        border: InputBorder.none, // Pas de bordure par défaut
-                        contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-                      ),
-                      style : TextStyle(
-                        color: Colors.black.withOpacity(0.8500000238418579),
-                        fontSize: 13,
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    )
-                  ),
-                ]
-              ),
-            ) : Container(),
-
-            //MOT DE PASSE
-            FirebaseAuth.instance.currentUser == null ? Container(
-              padding: EdgeInsets.fromLTRB(15, 5, 15, 15),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children : [
-                    Text(
-                      'Mot de passe * ',
-                      style: TextStyle(
-                        color: Colors.black.withOpacity(0.6000000238418579),
-                        fontSize: 14,
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w400,
-                        height: 0,
-                      ),
-                    ),
-
-                    Container(
-                      width: 236,
-                      height: 30,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                      decoration: ShapeDecoration(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            width: 1,
-                            color: Colors.black.withOpacity(0.10000000149011612),
-                          ),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                      ),
-                      child : TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          hintText: '*********************',
-                          border: InputBorder.none, // Pas de bordure par défaut
-                          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-                        ),
-                        style : TextStyle(
-                          color: Colors.black.withOpacity(0.8500000238418579),
-                          fontSize: 13,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      )
-                    ),
-                  ]
-              ),
-            ) : Container(),
-
-            FirebaseAuth.instance.currentUser == null ? Container(
-              padding: EdgeInsets.fromLTRB(15, 5, 15, 5),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children : [
-                  ElevatedButton(
-                    onPressed: () async {
-                      await registerUser(
-                          emailController.text,
-                          passwordController.text,
-                          'Utilisateur Client',
-                          '+242 00 000 11 22',
-                          context,
-                      );
-
-                      setState((){
-
-                      });
-                    },
-                    child: Text("Inscription"),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.black.withOpacity(0.5),
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(7.0), // Coins arrondis
-                      ),
-                    ),
-                  ),
-
-                  ElevatedButton(
-                    onPressed: () {
-                      onPressed: _login;
-                    },
-                    child: Text("Se connecter"),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(7.0), // Coins arrondis
-                      ),
-                    ),
-                  ),
-                ]
-              ),
-            ) : Container(),
 
             FirebaseAuth.instance.currentUser != null ? Container(
               padding: EdgeInsets.fromLTRB(15, 20, 15, 10),
@@ -926,7 +805,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
             FirebaseAuth.instance.currentUser != null ? Container(
               padding: EdgeInsets.fromLTRB(15, 20, 15, 10),
               child : Column(
-                children: context.read<User_Provider>().user.personnes.asMap().entries.map((entry) {
+                children: personnes.reversed.toList().asMap().entries.map((entry) {
                   int index = entry.key;
                   var item = entry.value;
 
@@ -941,10 +820,20 @@ class _Recap_RDVState extends State<Recap_RDV> {
             ) : Container(),
             FirebaseAuth.instance.currentUser != null ?  InkWell(
               onTap : (){
-                logoutUser(context);
-                setState((){
-
-                });
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (BuildContext context) {
+                    return SingleChildScrollView(
+                      child: Container(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).viewInsets.bottom,
+                        ),
+                        child: ajouter_personne(),
+                      ),
+                    );
+                  },
+                );
               },
               child: Container(
                   padding: EdgeInsets.fromLTRB(20, 0, 15, 10),
@@ -1015,6 +904,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child : TextField(
+                          controller : _promoCtrl,
                           decoration: InputDecoration(
                             hintText: 'AB224-xXXx-XB',
                             border: InputBorder.none, // Pas de bordure par défaut
@@ -1036,7 +926,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                       children : [
-                        Text(
+                        _promoCtrl.text.isNotEmpty &&  check_promo(_promoCtrl.text).length > 0 ? Text(
                           '- 50 € de réduction',
                           textAlign: TextAlign.right,
                           style: TextStyle(
@@ -1046,7 +936,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                             fontWeight: FontWeight.w400,
                             height: 0,
                           ),
-                        ),
+                        ) : Container(),
                         Text.rich(
                           TextSpan(
                             children: [
@@ -1061,7 +951,7 @@ class _Recap_RDVState extends State<Recap_RDV> {
                                 ),
                               ),
                               TextSpan(
-                                text: '135 €',
+                                text: '${widget.prestation.prix} €',
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 14,
@@ -1157,18 +1047,171 @@ class _Recap_RDVState extends State<Recap_RDV> {
               )
             ),
 
-            FirebaseAuth.instance.currentUser != null ?Align(
+            Align(
               alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Container(
-                  width: 354,
-                  height: 35,
-                  decoration: ShapeDecoration(
-                    color: Color(0xC429C90F),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+              child: InkWell(
+                onTap : (){
+                  /*print("Personne : ${personnes[index_personne].toMap()} *** Methode de payement ${index_payement} *** "
+                      "Occurence : ${occurence_selected}");*/
+                  List<Map> presta_exp = experiences.where((e)=>e["selected"] == true)
+                  .map((e){
+                    return Prestation_Exp.fromMap(e["exp"].toMap()).toMap();
+                  }).toList();
+
+                  /*final _reservation = Reservation(
+                    institut: widget.institut.toPublicInfo(),
+                    date: widget.jour,
+                    alerte: false,
+                    addToAgenda: false,
+                    notifierAvant: false,
+                    notifierTantDeTemps: 0,
+                    userInfo: User_Info.fromMap({
+                      'displayName': user?.displayName,
+                      'telephone': user?.phoneNumber,
+                      'email': user?.email,
+                      'uid': user?.uid,
+                    }),
+                    prestations: presta_exp,
+                    creneau: widget.creneau,
+                    personne: personnes[index_personne],
+                    occurrence: occurence_selected!,
+                  );*/
+
+                  final Map _reservation = {
+                    'institut': widget.institut.toPublicInfo().toMap(),
+                    'date': widget.jour,
+                    'alerte': false,
+                    'addToAgenda': false,
+                    'notifierAvant': false,
+                    'notifierTantDeTemps': 0,
+                    'userInfo': {
+                      'displayName': user?.displayName == null ? "Moi" : user?.displayName,
+                      'telephone': user?.phoneNumber,
+                      'email': user?.email,
+                      'uid': user?.uid,
+                    },
+                    'prestations': presta_exp,
+                    'creneau': widget.creneau.toMap(),
+                    'personne': personnes[index_personne].toMap(),
+                    'occurrence': occurence_selected == null ? "Aucune" : occurence_selected!,
+                  };
+
+                  print(_reservation);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    width: 354,
+                    height: 35,
+                    decoration: ShapeDecoration(
+                      color: Color(0xC429C90F),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                    ),
+                    child : Center(
+                      child: Text(
+                        'Valider',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
-                  child : Text(
+                ),
+              ),
+            ),
+          ]
+        )
+      )
+    );
+  }
+
+  Widget ajouter_personne() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Ajouter une personne',
+              //style: Theme.of(context).textTheme.headline6,
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _nomController,
+              decoration: InputDecoration(
+                labelText: 'Nom',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Veuillez entrer un nom';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _prenomController,
+              decoration: InputDecoration(
+                labelText: 'Prénom',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Veuillez entrer un prénom';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _telephoneController,
+              decoration: InputDecoration(
+                labelText: 'Numéro de téléphone',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Veuillez entrer un numéro de téléphone';
+                }
+                // Vous pouvez ajouter une validation plus poussée pour le numéro de téléphone ici
+                return null;
+              },
+            ),
+            SizedBox(height: 24),
+            InkWell(
+              onTap: () {
+                if (_formKey.currentState!.validate()) {
+
+                  setState((){
+                    personnes.add(Person(nom: '${_prenomController.text} ${_nomController.text}', telephone: _telephoneController.text));
+                  });
+                  final _personnes = personnes.map((p){
+                    return p.toMap();
+                  }).toList();
+
+                  updatePersonnes(user!.uid!, _personnes);
+                  _formKey.currentState?.reset();
+                  // Fermer le BottomSheet
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Container(
+                width: 354,
+                height: 35,
+                decoration: ShapeDecoration(
+                  color: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                ),
+                child : Center(
+                  child: Text(
                     'Valider',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -1180,10 +1223,10 @@ class _Recap_RDVState extends State<Recap_RDV> {
                   ),
                 ),
               ),
-            ) : Container(),
-          ]
-        )
-      )
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
